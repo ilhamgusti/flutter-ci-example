@@ -16,12 +16,17 @@ class PlayerSection extends StatefulWidget {
     super.key,
     required this.provider,
     this.playerBuilder,
+    this.compact = false,
   });
 
   final MusicSyncProvider provider;
 
   /// Replaces the real YouTube player surface (used by tests).
   final Widget Function(BuildContext context, Video video)? playerBuilder;
+
+  /// Picture-in-Picture mode: render only the player surface, edge-to-edge.
+  final bool compact;
+
 
   @override
   State<PlayerSection> createState() => _PlayerSectionState();
@@ -120,6 +125,12 @@ class _PlayerSectionState extends State<PlayerSection> {
   @override
   Widget build(BuildContext context) {
     final video = widget.provider.currentVideo;
+    if (widget.compact) {
+      // PiP: only the player surface, edge-to-edge, no chrome.
+      return video == null
+          ? const ColoredBox(color: Colors.black, child: SizedBox.expand())
+          : SizedBox.expand(child: _buildPlayer(video));
+    }
     if (video == null) {
       return const Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -253,6 +264,14 @@ class _TransportControls extends StatelessWidget {
           icon: const Icon(Icons.skip_next),
           onPressed: provider.connected ? provider.next : null,
         ),
+        if (provider.pipSupported &&
+            provider.currentVideo != null &&
+            !provider.inPipMode)
+          IconButton(
+            tooltip: 'Picture-in-Picture',
+            icon: const Icon(Icons.picture_in_picture_alt),
+            onPressed: provider.enterPip,
+          ),
       ],
     );
   }

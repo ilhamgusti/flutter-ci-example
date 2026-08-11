@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../models/player_command.dart';
 import '../models/sync_state.dart';
 import '../models/video.dart';
+import '../services/pip_service.dart';
 import '../services/sync_service.dart';
 
 /// Client-side state for the music sync room, wired to the backend
@@ -18,12 +19,16 @@ class MusicSyncProvider extends ChangeNotifier {
     required SyncService service,
     this.echoSuppressDuration = const Duration(milliseconds: 800),
     this.reconnectDelay = const Duration(seconds: 2),
+    PipService? pip,
     DateTime Function()? clock,
   })  : _service = service,
+        _pip = pip ?? PipService(),
         _clock = clock ?? DateTime.now;
 
   final SyncService _service;
+  final PipService _pip;
   final DateTime Function() _clock;
+
   final Duration echoSuppressDuration;
   final Duration reconnectDelay;
 
@@ -46,6 +51,9 @@ class MusicSyncProvider extends ChangeNotifier {
   Timer? _suppressTimer;
   Timer? _reconnectTimer;
   StreamSubscription<ServerMessage>? _subscription;
+  bool _pipSupported = false;
+  bool _inPipMode = false;
+  StreamSubscription<bool>? _pipSub;
 
   String? get myName => _myName;
   bool get connected => _connected;
@@ -56,6 +64,8 @@ class MusicSyncProvider extends ChangeNotifier {
   List<Video> get queue => _queue;
   List<String> get users => _users;
   String? get errorMessage => _errorMessage;
+  bool get pipSupported => _pipSupported;
+  bool get inPipMode => _inPipMode;
 
   /// Connects to the server and announces [name] (`{type:hello}`).
   Future<void> join(String name) async {
@@ -63,6 +73,7 @@ class MusicSyncProvider extends ChangeNotifier {
     _myName = name.trim();
     _errorMessage = null;
     _resetState();
+    unawaited(_initPip());
     try {
       await _service.connect(_myName!);
       _connected = true;
@@ -270,10 +281,40 @@ class MusicSyncProvider extends ChangeNotifier {
   }
 
   @override
+  void notifyListeners() {
+    super.notifyListeners();
+    _syncPipAutoEnter();
+  }
+
+  Future<void> _initPip() async {
+    _pipSupported = await _pip.isSupported;
+    _pipSub?.cancel();
+    _pipSub = _pip.inPipMode.listen((inPip) {
+      _inPipMode = inPip;
+      super.notifyListeners();
+    });
+    super.notifyListeners();
+  }
+
+  /// Keeps the native side's auto-enter flag in sync with playback state.
+  void _syncPipAutoEnter() {
+    if (!_pipSupported) return;
+    final enabled = _connected && _isPlaying && _currentVideo != null;
+    _pip.setAutoEnter(enabled);
+  }
+
+  /// Requests Picture-in-Picture now (no-op if unsupported).
+  Future<bool> enterPip() async {
+    if (!_pipSupported) return false;
+    return _pip.enter();
+  }
+
+  @override
   void dispose() {
     _reconnectTimer?.cancel();
     _suppressTimer?.cancel();
     _subscription?.cancel();
+    _pipSub?.cancel();
     _commandController.close();
     super.dispose();
   }

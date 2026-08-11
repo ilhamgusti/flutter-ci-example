@@ -64,6 +64,19 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<MusicSyncProvider>();
+    // Picture-in-Picture: show only the player surface, no app chrome.
+    if (provider.inPipMode) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: PlayerSection(
+            provider: provider,
+            playerBuilder: widget.playerBuilder,
+            compact: true,
+          ),
+        ),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Music Sync'),

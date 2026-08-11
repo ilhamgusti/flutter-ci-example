@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -15,6 +16,27 @@ import 'package:flutter_ci_example/services/sync_service.dart';
 import '../helpers/fake_web_socket_channel.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const pipMethod = MethodChannel('music_sync/pip');
+  const pipEvent = MethodChannel('music_sync/pip_events');
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pipMethod, (MethodCall call) async {
+      switch (call.method) {
+        case 'isSupported':
+          return true;
+        case 'enter':
+          return true;
+        case 'setAutoEnter':
+          return null;
+      }
+      return null;
+    });
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pipEvent, (MethodCall call) async => null);
+  });
+
   const video = Video(
     id: 'dQw4w9WgXcQ',
     title: 'Rick Astley - Never Gonna Give You Up',

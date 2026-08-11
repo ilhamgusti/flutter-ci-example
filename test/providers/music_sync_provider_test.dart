@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_ci_example/models/player_command.dart';
@@ -7,7 +8,31 @@ import 'package:flutter_ci_example/services/sync_service.dart';
 
 import '../helpers/fake_web_socket_channel.dart';
 
+const _pipMethod = MethodChannel('music_sync/pip');
+const _pipEvent = MethodChannel('music_sync/pip_events');
+
+void _mockPip() {
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(_pipMethod, (MethodCall call) async {
+    switch (call.method) {
+      case 'isSupported':
+        return false; // unsupported in pure Dart tests
+      case 'enter':
+        return false;
+      case 'setAutoEnter':
+        return null;
+      default:
+        return null;
+    }
+  });
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(_pipEvent, (MethodCall call) async => null);
+}
+
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   const video = Video(
     id: 'dQw4w9WgXcQ',
     title: 'Rick Astley - Never Gonna Give You Up',
@@ -19,6 +44,7 @@ void main() {
   late FakeWebSocketChannel channel;
   late MusicSyncProvider provider;
   final commands = <PlayerCommand>[];
+  setUp(_mockPip);
 
   Future<void> setUpProvider({Duration echoSuppress = Duration.zero}) async {
     channel = FakeWebSocketChannel();
