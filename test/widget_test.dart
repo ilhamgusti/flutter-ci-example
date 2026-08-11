@@ -1,13 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_ci_example/main.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:flutter_ci_example/screens/name_entry_screen.dart';
 
 void main() {
-  testWidgets('HomePage renders correctly', (WidgetTester tester) async {
-    await tester.pumpWidget(const MyApp());
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
-    expect(find.text('CI/CD Works! 🚀'), findsOneWidget);
-    expect(find.text('Built with GitHub Actions'), findsOneWidget);
-    expect(find.byIcon(Icons.build), findsOneWidget);
+  testWidgets('NameEntryScreen renders and joins with the entered name',
+      (WidgetTester tester) async {
+    String? joinedName;
+    await tester.pumpWidget(
+      MaterialApp(home: NameEntryScreen(onJoin: (name) => joinedName = name)),
+    );
+
+    expect(find.text('Music Sync'), findsOneWidget);
+    expect(find.text('Gabung'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'Ilham');
+    await tester.tap(find.text('Gabung'));
+    await tester.pumpAndSettle();
+
+    expect(joinedName, 'Ilham');
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString(NameEntryScreen.storageKey), 'Ilham');
   });
 }

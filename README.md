@@ -10,13 +10,14 @@ Example Flutter project for testing GitHub Actions CI/CD pipeline.
 
 ## CI/CD Pipeline
 
-On every push/PR to `main`:
+On every push/PR to `master`:
 1. Set up Java 17 + Flutter (cached)
 2. Run `flutter doctor`
 3. Install dependencies
-4. Run tests
-5. Build debug APK
-6. Upload APK as artifact (downloadable from Actions tab)
+4. Run `flutter analyze`
+5. Run tests
+6. Build debug APK
+7. Upload APK as artifact (downloadable from Actions tab)
 
 ## Local run
 

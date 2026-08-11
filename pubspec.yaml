@@ -10,11 +10,17 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  web_socket_channel: ^3.0.3
+  http: ^1.6.0
+  shared_preferences: ^2.5.5
+  provider: ^6.1.5+1
+  youtube_player_flutter: ^10.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  stream_channel: ^2.1.4
 
 flutter:
   uses-material-design: true

@@ -1,53 +1,83 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'providers/music_sync_provider.dart';
+import 'screens/main_screen.dart';
+import 'screens/name_entry_screen.dart';
+import 'services/backend_config.dart';
+import 'services/sync_service.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final savedName = prefs.getString(NameEntryScreen.storageKey) ?? '';
+  runApp(MusicSyncApp(savedName: savedName));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MusicSyncApp extends StatelessWidget {
+  const MusicSyncApp({super.key, required this.savedName});
+
+  final String savedName;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter CI Example',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+    return ChangeNotifierProvider(
+      create: (_) => MusicSyncProvider(
+        service: SyncService(
+          channel: WebSocketChannel.connect(Uri.parse(BackendConfig.wsUrl)),
+        ),
       ),
-      home: const HomePage(),
+      child: MaterialApp(
+        title: 'Music Sync',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          useMaterial3: true,
+        ),
+        home: _Root(savedName: savedName),
+      ),
     );
   }
 }
 
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
+class _Root extends StatefulWidget {
+  const _Root({required this.savedName});
+
+  final String savedName;
+
+  @override
+  State<_Root> createState() => _RootState();
+}
+
+class _RootState extends State<_Root> {
+  late String _name = widget.savedName;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_name.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.read<MusicSyncProvider>().join(_name);
+      });
+    }
+  }
+
+  void _join(String name) {
+    _name = name;
+    setState(() {});
+    context.read<MusicSyncProvider>().join(name);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Flutter CI Example'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.build, size: 100, color: Colors.deepPurple),
-            const SizedBox(height: 24),
-            Text(
-              'CI/CD Works! 🚀',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Built with GitHub Actions',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ],
-        ),
-      ),
-    );
+    if (_name.isEmpty) {
+      return NameEntryScreen(
+        onJoin: (name) {
+          _join(name);
+        },
+      );
+    }
+    return const MainScreen();
   }
 }
